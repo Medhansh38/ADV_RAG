@@ -1,0 +1,11 @@
+ACME CORP INTERNAL POLICY 2026
+
+1. Paid Time Off (PTO)
+Full-time employees receive 24 days of paid leave per calendar year. 
+Unused PTO up to a maximum of 5 days may be carried over into the first quarter of the following year.
+
+2. Equipment Stipend
+Engineering staff are eligible for a $1,000 annual home office hardware stipend. Receipts must be submitted by November 30th.
+
+3. Working Hours & Remote Work
+Core working hours are 10:00 AM to 4:00 PM local time. Remote work is supported across all technical teams.
