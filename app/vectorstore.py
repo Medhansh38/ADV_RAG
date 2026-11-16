@@ -43,6 +43,7 @@ def get_vector_store() -> QdrantVectorStore:
     )
 
 def delete_document(doc_id: str) -> None:
+    ensure_collection()
     client.delete(
         collection_name=settings.COLLECTION_NAME,
         points_selector=rest.Filter(
@@ -54,7 +55,6 @@ def delete_document(doc_id: str) -> None:
             ]
         )
     )
-
 def list_documents() -> List[dict]:
     points, _ = client.scroll(
         collection_name=settings.COLLECTION_NAME,
