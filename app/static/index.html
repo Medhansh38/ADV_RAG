@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enterprise RAG Assistant</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: #0f172a; color: #f8fafc; display: flex; justify-content: center; padding: 24px; }
+    .container { width: 100%; max-width: 820px; display: flex; flex-direction: column; gap: 18px; }
+    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 12px; }
+    h1 { font-size: 1.35rem; margin: 0; color: #38bdf8; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    input[type="text"], input[type="password"] {
+      flex: 1; padding: 10px 12px; border-radius: 6px; border: 1px solid #475569;
+      background: #0f172a; color: #f8fafc; font-size: 0.95rem;
+    }
+    input[type="file"] { color: #cbd5e1; font-size: 0.9rem; }
+    button {
+      padding: 10px 16px; border: none; border-radius: 6px; background: #2563eb;
+      color: white; font-weight: 600; cursor: pointer; font-size: 0.95rem;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #475569; cursor: not-allowed; }
+    .status { font-size: 0.85rem; color: #94a3b8; margin-top: 8px; }
+    .chat-box { display: flex; flex-direction: column; gap: 12px; max-height: 430px; overflow-y: auto; }
+    .msg { padding: 12px 14px; border-radius: 8px; line-height: 1.5; white-space: pre-wrap; }
+    .user { background: #1d4ed8; align-self: flex-end; max-width: 80%; }
+    .bot { background: #0f172a; border: 1px solid #334155; align-self: flex-start; width: 100%; }
+    .sources { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #334155; font-size: 0.8rem; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Enterprise RAG Workspace</h1>
+      <input type="password" id="apiKey" value="secret-api-key-1" placeholder="X-API-Key" style="max-width: 210px;" />
+    </header>
+
+    <div class="card">
+      <div class="row">
+        <input type="file" id="fileInput" />
+        <button id="uploadBtn" onclick="uploadDoc()">Upload & Index</button>
+      </div>
+      <div id="uploadStatus" class="status">Ready to ingest PDF, DOCX, TXT, or HTML documents.</div>
+    </div>
+
+    <div class="card">
+      <div class="chat-box" id="chatBox"></div>
+      <div class="row" style="margin-top: 14px;">
+        <input type="text" id="questionInput" placeholder="Ask a question about your uploaded documents..." onkeydown="if(event.key==='Enter') askQuery()" />
+        <button id="askBtn" onclick="askQuery()">Ask</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const headers = () => ({ "X-API-Key": document.getElementById("apiKey").value.trim() });
+
+    async function uploadDoc() {
+      const file = document.getElementById("fileInput").files[0];
+      const status = document.getElementById("uploadStatus");
+      const btn = document.getElementById("uploadBtn");
+      if (!file) { status.textContent = "Please select a file first."; return; }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      btn.disabled = true;
+      status.textContent = "Chunking and embedding document into Qdrant...";
+
+      try {
+        const res = await fetch("/ingest", { method: "POST", headers: headers(), body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Upload failed");
+        status.textContent = `Indexed "${data.filename}" (${data.chunks} chunks) — Doc ID: ${data.doc_id}`;
+      } catch (err) {
+        status.textContent = "Error: " + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function appendMessage(text, cls, sources = []) {
+      const box = document.getElementById("chatBox");
+      const div = document.createElement("div");
+      div.className = `msg ${cls}`;
+      div.textContent = text;
+
+      if (sources && sources.length > 0) {
+        const srcDiv = document.createElement("div");
+        srcDiv.className = "sources";
+        srcDiv.textContent = "Retrieved Sources:\n" + sources.map((s, i) =>
+          `[${i + 1}] ${s.source || s.filename || "Document"} (score: ${s.score ? s.score.toFixed(3) : "N/A"})`
+        ).join("\n");
+        div.appendChild(srcDiv);
+      }
+
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function askQuery() {
+      const input = document.getElementById("questionInput");
+      const btn = document.getElementById("askBtn");
+      const question = input.value.trim();
+      if (!question) return;
+
+      appendMessage(question, "user");
+      input.value = "";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/query", {
+          method: "POST",
+          headers: { ...headers(), "Content-Type": "application/json" },
+          body: JSON.stringify({ question, top_k: 4, doc_ids: null })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Query failed");
+        const answer = data.answer || data.response || JSON.stringify(data, null, 2);
+        const sources = data.sources || data.citations || data.contexts || [];
+        appendMessage(answer, "bot", sources);
+      } catch (err) {
+        appendMessage("Error: " + err.message, "bot");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

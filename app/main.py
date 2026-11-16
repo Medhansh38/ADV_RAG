@@ -10,6 +10,8 @@ from app.security import verify_api_key
 from app.vectorstore import ensure_collection, list_documents, delete_document
 from app.ingestion import ingest_bytes
 from app.rag import run_rag_query
+from fastapi.responses import FileResponse
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -94,3 +96,7 @@ def get_documents():
 def remove_document(doc_id: str):
     delete_document(doc_id)
     return {"detail": f"Document {doc_id} deleted"}
+
+@app.get("/", include_in_schema=False)
+async def serve_ui():
+    return FileResponse("app/static/index.html")
