@@ -3,6 +3,7 @@
 A production-style Retrieval-Augmented Generation (RAG) backend engineered with **FastAPI**, **LangChain**, **Qdrant**, and **Google Gemini**. The system indexes unstructured enterprise documentation (PDF, Markdown, TXT) and serves citation-backed, hallucination-resistant answers via a secure REST API.
 
 ---
+## Render link : https://adv-rag-twm6.onrender.com
 
 ## Architecture Overview
 
